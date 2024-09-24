@@ -11,8 +11,6 @@ Plugin.registerCompiler({
   archMatching: 'web'
 }, () => new SassCompiler())
 
-console.log(Package, Plugin);
-
 // CompileResult is {css, sourceMap}.
 class SassCompiler extends MultiFileCachingCompiler {
   constructor () {
