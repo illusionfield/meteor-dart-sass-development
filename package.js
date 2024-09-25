@@ -21,16 +21,14 @@ Package.registerBuildPlugin({
   ],
 });
 
-Package.onUse(function(api) {
-  api.versionsFrom('3.0.1');
+Package.onUse((api) => {
+  api.versionsFrom('3.0');
   api.use('isobuild:compiler-plugin@1.0.0');
 });
 
-
-Package.onTest(function(api) {
-  api.versionsFrom('3.0.1');
-  api.use(['test-helpers', 'tinytest']);
-
+Package.onTest((api) => {
+  api.use(['tinytest', 'test-helpers']);
+  api.use('ecmascript');
   api.use('illusionfield:scss');
 
   // Tests for .scss
@@ -46,10 +44,11 @@ Package.onTest(function(api) {
     'test/scss/dir/subdir/_in-subdir.scss',
   ]);
 
+  //api.addFiles('test/scss/top2.scss', 'client', { lazy: true });
   api.addFiles('test/scss/top2.scss', 'client', { isImport: true });
 
   // Test for includePaths
   //api.addFiles(['test/include-paths/include-paths.scss', 'test/include-paths/modules/module/_module.scss']);
 
-  api.mainModule('test/index.js', 'client');
+  api.mainModule('scss-tests.js', 'client');
 });

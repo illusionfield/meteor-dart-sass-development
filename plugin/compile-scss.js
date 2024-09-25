@@ -32,10 +32,12 @@ class SassCompiler extends MultiFileCachingCompiler {
   // The heuristic is that a file is an import (ie, is not itself processed as a root) if it matches _*.sass, _*.scss
   // This can be overridden in either direction via an explicit `isImport` file option in api.addFiles.
   isRoot(inputFile) {
+    /*
     const packageName = inputFile.getPackageName();
     if(packageName) {
       return false;
     }
+    */
     const fileOptions = inputFile.getFileOptions();
     if(fileOptions.hasOwnProperty('isImport')) {
       return !fileOptions.isImport;
@@ -194,6 +196,8 @@ class SassCompiler extends MultiFileCachingCompiler {
     if(sourceMap) {
       //sourceMap.sourceRoot = '.';
       const sourceRoot = inputFile.getSourceRoot();
+      const entryFileDisplayPath = inputFile.getDisplayPath();
+
       sourceMap.sources = sourceMap.sources.map(src => {
         let url;
         try {
@@ -204,8 +208,11 @@ class SassCompiler extends MultiFileCachingCompiler {
         switch(url?.protocol) {
           case 'file:':
             let srcPath = url.pathname.replace(new RegExp(`^${sourceRoot}/?`), '');
+
             // this is an attempt at standard-minifier-css compatibility
             //srcPath = (`app/${srcPath}`).replace('app//', 'app/');
+            srcPath = `${entryFileDisplayPath}/${srcPath}`;
+
             return srcPath;
           default:
             return src;

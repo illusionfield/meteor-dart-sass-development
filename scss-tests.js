@@ -1,15 +1,15 @@
 import { Tinytest } from "meteor/tinytest";
 
-Tinytest.add("sass/scss - imports", function (test) {
-  var div = document.createElement('div');
+Tinytest.add("sass/scss - imports", function(test) {
+  const div = document.createElement('div');
   document.body.appendChild(div);
 
   const prefixes = ['scss'];
 
   try {
-    var t = function (className, style) {
+    const t = function (className, style) {
       prefixes.forEach(function(prefix){
-        div.className = prefix + '-' + className;
+        div.className = `${prefix}-${className}`;
 
         // Read 'border-top-style' instead of 'border-style' (which is set
         // by the stylesheet) because only the individual styles are computed
@@ -37,7 +37,7 @@ Tinytest.add("sass/scss - imports", function (test) {
 
 /*
 Tinytest.add('sass/scss - import from includePaths', function (test) {
-  var div = document.createElement('div');
+  const div = document.createElement('div');
   document.body.appendChild(div);
   try {
     div.className = 'from-include-paths';
