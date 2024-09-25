@@ -1,4 +1,5 @@
 import { MultiFileCachingCompiler } from 'meteor/caching-compiler';
+
 import sass from 'sass-embedded';
 
 import { pathToFileURL } from 'url';
@@ -14,7 +15,7 @@ Plugin.registerCompiler({
 
 // CompileResult is {css, sourceMap}.
 class SassCompiler extends MultiFileCachingCompiler {
-  constructor () {
+  constructor() {
     super({
       compilerName: 'sass',
       defaultCacheSize: 1024 * 1024 * 10
@@ -110,30 +111,26 @@ class SassCompiler extends MultiFileCachingCompiler {
 
       //Try if one of the possible files exists
       for(const possibleFile of possibleFiles.concat(possibleFilesIndex)) {
-        const isInternal = allFiles.has(possibleFile);
-        if(isInternal || fileExists(possibleFile)) {
-          return {path: possibleFile, isInternal};
+        const file = allFiles.get(possibleFile);
+        if(file) {
+          return path.join(file.getSourceRoot(), file.getPathInPackage());
+        } else if(fileExists(possibleFile)) {
+          return possibleFile;
         }
       }
-
       //Nothing found...
       return null;
-
     };
 
     const findFileUrl = (url, ctx) => {
+      // Later if we need to know the parent file
       //const sourcePath = ctx?.containingUrl?.pathname;
       //const parentPath = allFilesByPath.get(sourcePath) || sourcePath;
       //const prev = allFiles.get(allFilesByPath.get(sourcePath));
 
       const importPath = getRealImportPath(url);
-      if(importPath?.isInternal) {
-        const file = allFiles.get(importPath.path);
-        const absoluteUrl = path.join(file.getSourceRoot(), file.getPathInPackage());
-        return pathToFileURL(absoluteUrl);
-      }
-      if(importPath?.path) {
-        return pathToFileURL(importPath.path);
+      if(importPath) {
+        return pathToFileURL(importPath);
       }
       return null;
     }
@@ -173,37 +170,36 @@ class SassCompiler extends MultiFileCachingCompiler {
 
     // Get all referenced files for watcher
     const referencedImportPaths = [];
-    referencedImportPaths.push(this.getAbsoluteImportPath(inputFile));
-
     if(output?.loadedUrls && output.loadedUrls.length > 0) {
       const skippedImportPaths = [];
-
       for(const loadedUrl of output.loadedUrls) {
-        const absolutePath = decodeURIComponent(loadedUrl.pathname).replace(/\{\}\//, '');
-        const absoluteUrl = allFilesByPath.get(absolutePath);
-        if(absoluteUrl) {
-          referencedImportPaths.push(absoluteUrl);
+        const referencedImportPath = allFilesByPath.get(loadedUrl.pathname);
+        if(referencedImportPath) {
+          referencedImportPaths.push(referencedImportPath);
         } else {
-          skippedImportPaths.push(absolutePath);
+          skippedImportPaths.push(loadedUrl.pathname);
         }
       }
-
       if(skippedImportPaths.length) {
-        console.warn(`\nLoaded file outside of sourceRoot (included but not tracked):\n ---- ${skippedImportPaths.join('\n ---- ')}\n`);
+        console.warn(`[ SASS Compiler ] The following external files were loaded but are not tracked by the project:\n - ${skippedImportPaths.join('\n - ')}`);
       }
     }
 
     // Fix source map
     const sourceMap = output?.sourceMap || null;
     if(sourceMap) {
-      const sourceRoot = inputFile.getSourceRoot();
-
       //sourceMap.sourceRoot = '.';
+      const sourceRoot = inputFile.getSourceRoot();
       sourceMap.sources = sourceMap.sources.map(src => {
-        const url = new URL(src);
-        switch(url.protocol) {
+        let url;
+        try {
+          url = new URL(src);
+        } catch(e) {
+          return src;
+        }
+        switch(url?.protocol) {
           case 'file:':
-            let srcPath = decodeURIComponent(url.pathname).replace(new RegExp(`^${sourceRoot}/?`), '').replace(/^\{\}\//, '');
+            let srcPath = url.pathname.replace(new RegExp(`^${sourceRoot}/?`), '');
             // this is an attempt at standard-minifier-css compatibility
             //srcPath = (`app/${srcPath}`).replace('app//', 'app/');
             return srcPath;
@@ -213,8 +209,13 @@ class SassCompiler extends MultiFileCachingCompiler {
       });
     }
 
-    const compileResult = { css: output.css?.toString('utf-8'), sourceMap };
-    return { compileResult, referencedImportPaths }
+    return {
+      compileResult: {
+        css: output.css?.toString('utf-8'),
+        sourceMap,
+      },
+      referencedImportPaths,
+    };
   }
 
   addCompileResult(inputFile, compileResult) {
