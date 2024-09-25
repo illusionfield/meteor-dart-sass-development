@@ -211,7 +211,8 @@ class SassCompiler extends MultiFileCachingCompiler {
 
             // this is an attempt at standard-minifier-css compatibility
             //srcPath = (`app/${srcPath}`).replace('app//', 'app/');
-            srcPath = `${entryFileDisplayPath}/${srcPath}`;
+            //srcPath = path.normalize(`${entryFileDisplayPath.replace(/\//g,'-')}/${srcPath}`);
+            srcPath = path.normalize(`${entryFileDisplayPath}/${srcPath}`);
 
             return srcPath;
           default:
