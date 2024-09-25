@@ -33,7 +33,6 @@ Package.onTest(function(api) {
 
   api.use('illusionfield:scss');
 
-  /*
   // Tests for .scss
   api.addFiles([
     'test/scss/_emptyimport.scss',
@@ -50,8 +49,7 @@ Package.onTest(function(api) {
   api.addFiles('test/scss/top2.scss', 'client', { isImport: true });
 
   // Test for includePaths
-  api.addFiles(['test/include-paths/include-paths.scss', 'test/include-paths/modules/module/_module.scss']);
-  */
+  //api.addFiles(['test/include-paths/include-paths.scss', 'test/include-paths/modules/module/_module.scss']);
 
   api.mainModule('test/index.js', 'client');
 });
