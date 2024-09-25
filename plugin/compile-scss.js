@@ -1,10 +1,11 @@
 import { MultiFileCachingCompiler } from 'meteor/caching-compiler';
-
 import sass from 'sass-embedded';
 
+import { pathToFileURL } from 'url';
 const { fs, path } = Plugin;
 
-import { pathToFileURL } from 'url';
+const { env:{ DEBUG_PACKAGE_SASS } } = process;
+const debugMode = !!(DEBUG_PACKAGE_SASS && !(DEBUG_PACKAGE_SASS === 'false' || DEBUG_PACKAGE_SASS === '0'));
 
 Plugin.registerCompiler({
   extensions: ['scss', 'sass'],
@@ -35,11 +36,9 @@ class SassCompiler extends MultiFileCachingCompiler {
       return !fileOptions.isImport;
     }
     const pathInPackage = inputFile.getPathInPackage();
-    return !this.hasUnderscore(pathInPackage);
+    return !hasUnderscore(pathInPackage);
   }
-  hasUnderscore(file) {
-    return path.basename(file).startsWith('_');
-  }
+
   compileOneFileLater(inputFile, getResult) {
     inputFile.addStylesheet({
       path: inputFile.getPathInPackage()
@@ -53,31 +52,30 @@ class SassCompiler extends MultiFileCachingCompiler {
   }
 
   async compileOneFile(inputFile, allFiles) {
-    const entryPoint = path.dirname(this.getAbsoluteImportPath(inputFile));
-    const sourceRoot = inputFile.getSourceRoot();
 
-    const addUnderscore = (file) => {
-      if(!this.hasUnderscore(file)) {
-        file = path.join(path.dirname(file), `_${path.basename(file)}`);
-      }
-      return file;
+    const allFilesByPath = new Map();
+    for(const [absoluteImportPath, file] of allFiles.entries()) {
+      const absolutePath = path.join(file.getSourceRoot(), file.getPathInPackage());
+      allFilesByPath.set(absolutePath, absoluteImportPath);
     }
 
     const getRealImportPath = (url) => {
       const basename = decodeURIComponent(url);
+
       let importPath;
-
-      if(basename.match(/~([^\/])/)) {
-        importPath = basename.replace(/^.*~([^\/])/, '{}/node_modules/$1');
-      } else if(basename.startsWith('meteor:')) {
-        importPath = basename.replace(/^meteor:/, '');
-      } else {
-        importPath = basename;
-      }
-
-      const isAbsolute = importPath.startsWith('/');
-      if(!importPath.startsWith('{') && !isAbsolute) {
-        importPath = path.join(entryPoint, importPath);
+      switch(true) {
+        case basename.search(/~[^\/]/) !== -1:
+          importPath = basename.replace(/^.*~([^\/])/, '{}/node_modules/$1');
+          break;
+        case basename.search(/^meteor[:\/]/) !== -1:
+          importPath = basename.replace(/^meteor[:\/]/, '');
+          break;
+        case basename.search(/^\/[^\/]/) !== -1:
+          importPath = basename.replace(/^\//, '{}/');
+          break;
+        default:
+          importPath = basename;
+          break;
       }
 
       //SASS has a whole range of possible import files from one import statement, try each of them
@@ -103,15 +101,18 @@ class SassCompiler extends MultiFileCachingCompiler {
 
       //Try files prefixed with underscore
       for(const possibleFile of possibleFiles) {
-        if(!this.hasUnderscore(possibleFile)) {
-          possibleFiles.push(addUnderscore(possibleFile));
+        if(!hasUnderscore(possibleFile)) {
+          possibleFiles.push(
+            path.join(path.dirname(possibleFile), `_${path.basename(possibleFile)}`)
+          );
         }
       }
 
       //Try if one of the possible files exists
       for(const possibleFile of possibleFiles.concat(possibleFilesIndex)) {
-        if((isAbsolute && fileExists(possibleFile)) || (!isAbsolute && allFiles.has(possibleFile))) {
-          return { absolute: isAbsolute, path: possibleFile }
+        const isInternal = allFiles.has(possibleFile);
+        if(isInternal || fileExists(possibleFile)) {
+          return {path: possibleFile, isInternal};
         }
       }
 
@@ -120,60 +121,54 @@ class SassCompiler extends MultiFileCachingCompiler {
 
     };
 
-    const findFileUrl = (url) => {
+    const findFileUrl = (url, ctx) => {
+      //const sourcePath = ctx?.containingUrl?.pathname;
+      //const parentPath = allFilesByPath.get(sourcePath) || sourcePath;
+      //const prev = allFiles.get(allFilesByPath.get(sourcePath));
+
       const importPath = getRealImportPath(url);
-      if(!importPath) {
-        return null;
-      }
-      if(importPath.absolute) {
-        return pathToFileURL(importPath.path);
-      }
-      const file = allFiles.get(importPath.path);
-      if(file) {
+      if(importPath?.isInternal) {
+        const file = allFiles.get(importPath.path);
         const absoluteUrl = path.join(file.getSourceRoot(), file.getPathInPackage());
         return pathToFileURL(absoluteUrl);
+      }
+      if(importPath?.path) {
+        return pathToFileURL(importPath.path);
       }
       return null;
     }
 
     // Start compile sass (async)
-    // https://sass-lang.com/documentation/js-api/interfaces/stringoptions
+    // https://sass-lang.com/documentation/js-api/interfaces/options/
     const options = {
       sourceMap: true,
       sourceMapIncludeSources: true,
-      syntax: inputFile.getExtension() === 'sass' ? 'indented' : 'scss',
-      style: 'expanded',
       importers: [{findFileUrl}],
 
-      // Entry point hack (if this is not set then the sass compiler will embedded data in the first file sourcemap sources)
-      url: pathToFileURL(`{}/${inputFile.getPathInPackage()}`),
-      //url: pathToFileURL(path.join(inputFile.getSourceRoot(), inputFile.getPathInPackage())),
-
+      // if dev mode, use expanded style, otherwise use compressed, or set in config file
+      //style: isDev ? 'expanded' : 'compressed',
+      style: 'expanded',
 
       // temporary, will be set in config file
       //loadPaths: [],
       quietDeps: true,
       verbose: false,
-      //logger: '',
+      //silenceDeprecations: [],
     }
 
     // Compile
     let output;
     try {
-      // the acompileStringAsync method is used because it is the only way to validate all imports with the options, e.g.: quietDeps
-      output = await sass.compileStringAsync(inputFile.getContentsAsBuffer().toString('utf8'), options);
-    } catch (e) {
+      output = await sass.compileAsync(inputFile.getPathInPackage(), options);
+    } catch(e) {
       inputFile.error({
         message: `Scss compiler ${e}\n`,
         sourcePath: inputFile.getDisplayPath()
       });
+      if(debugMode) {
+        console.error(e);
+      }
       return null;
-    }
-
-    const allFilesByPath = new Map();
-    for(const [absoluteImportPath, file] of allFiles.entries()) {
-      const absolutePath = path.join(file.getSourceRoot(), file.getPathInPackage());
-      allFilesByPath.set(absolutePath, absoluteImportPath);
     }
 
     // Get all referenced files for watcher
@@ -201,6 +196,8 @@ class SassCompiler extends MultiFileCachingCompiler {
     // Fix source map
     const sourceMap = output?.sourceMap || null;
     if(sourceMap) {
+      const sourceRoot = inputFile.getSourceRoot();
+
       //sourceMap.sourceRoot = '.';
       sourceMap.sources = sourceMap.sources.map(src => {
         const url = new URL(src);
@@ -230,6 +227,10 @@ class SassCompiler extends MultiFileCachingCompiler {
 }
 
 // --------------------------------------------------------------------------------------------
+
+function hasUnderscore(file) {
+  return path.basename(file).startsWith('_');
+}
 
 function fileExists(file) {
   if(fs.statSync){
