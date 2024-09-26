@@ -8,6 +8,11 @@ const { fs, path } = Plugin;
 const { env:{ DEBUG_PACKAGE_SASS } } = process;
 const debugMode = !!(DEBUG_PACKAGE_SASS && !(DEBUG_PACKAGE_SASS === 'false' || DEBUG_PACKAGE_SASS === '0'));
 
+const userOptions = _getConfig(
+  '.scss.config.json',
+  'scss-config.json', // legacy
+);
+
 Plugin.registerCompiler({
   extensions: ['scss', 'sass'],
   archMatching: 'web'
@@ -33,8 +38,7 @@ class SassCompiler extends MultiFileCachingCompiler {
   // This can be overridden in either direction via an explicit `isImport` file option in api.addFiles.
   isRoot(inputFile) {
     /*
-    const packageName = inputFile.getPackageName();
-    if(packageName) {
+    if(inputFile.isPackageFile()) {
       return false;
     }
     */
@@ -43,7 +47,9 @@ class SassCompiler extends MultiFileCachingCompiler {
       return !fileOptions.isImport;
     }
     const pathInPackage = inputFile.getPathInPackage();
-    return !hasUnderscore(pathInPackage);
+    const isPartial = hasUnderscore(pathInPackage);
+
+    return !isPartial;
   }
 
   compileOneFileLater(inputFile, getResult) {
@@ -152,11 +158,23 @@ class SassCompiler extends MultiFileCachingCompiler {
       //style: isDev ? 'expanded' : 'compressed',
       style: 'expanded',
 
-      // temporary, will be set in config file
-      //loadPaths: [],
       quietDeps: true,
       verbose: false,
-      //silenceDeprecations: [],
+    }
+
+    if(userOptions?.hasOwnProperty) {
+      if(userOptions.hasOwnProperty('loadPaths')) {
+        //options.loadPaths = userOptions.loadPaths;
+      }
+      if(userOptions.hasOwnProperty('silenceDeprecations')) {
+        //options.silenceDeprecations = userOptions.silenceDeprecations;
+      }
+      if(userOptions.hasOwnProperty('quietDeps')) {
+        options.quietDeps = userOptions.quietDeps;
+      }
+      if(userOptions.hasOwnProperty('verbose')) {
+        options.verbose = userOptions.verbose;
+      }
     }
 
     // Compile
@@ -240,6 +258,26 @@ class SassCompiler extends MultiFileCachingCompiler {
 }
 
 // --------------------------------------------------------------------------------------------
+
+function _getConfig(...configFileNames) {
+  const appdir = process.env.PWD || process.cwd();
+
+  for(const configFileName of configFileNames) {
+    const configPath = path.join(appdir, configFileName);
+    if(fileExists(configPath)) {
+      try {
+        return JSON.parse(fs.readFileSync(configPath, {encoding: 'utf8'}));
+        break;
+      } catch(e) {
+        console.warn(`[ SASS Compiler ] Custom config ignored (${configFileName}):\n - ${e}`);
+        if(debugMode) {
+          console.error(e);
+        }
+        break;
+      }
+    }
+  }
+}
 
 function hasUnderscore(file) {
   return path.basename(file).startsWith('_');
