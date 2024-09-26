@@ -9,8 +9,8 @@ Package.describe({
 Package.registerBuildPlugin({
   name: 'compileScssBatch',
   use: [
-    'caching-compiler',
-    'ecmascript',
+    'caching-compiler@2.0.0',
+    'ecmascript@0.16.9',
   ],
   npmDependencies: {
     '@babel/runtime': "7.25.6",
