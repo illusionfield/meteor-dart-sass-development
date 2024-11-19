@@ -65,7 +65,7 @@ class SassCompiler extends MultiFileCachingCompiler {
   }
 
   async compileOneFile(inputFile, allFiles) {
-
+    const sourceRoot = inputFile.getSourceRoot();
     const allFilesByPath = new Map();
     for(const [absoluteImportPath, file] of allFiles.entries()) {
       const absolutePath = path.join(file.getSourceRoot(), file.getPathInPackage());
@@ -126,8 +126,13 @@ class SassCompiler extends MultiFileCachingCompiler {
         const file = allFiles.get(possibleFile);
         if(file) {
           return path.join(file.getSourceRoot(), file.getPathInPackage());
-        } else if(fileExists(possibleFile)) {
+        }
+        if(fileExists(possibleFile)) {
           return possibleFile;
+        }
+        const possibleFileFullPath = path.join(sourceRoot, possibleFile.replace(/^\{\}\//, ''));
+        if(fileExists(possibleFileFullPath)) {
+          return possibleFileFullPath;
         }
       }
       //Nothing found...
