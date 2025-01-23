@@ -1,13 +1,12 @@
-@import "../_top.scss";
-@import "meteor:{local-test:illusionfield:scss}/test/scss/top2";
-@import "_in-dir";
-@import "./in-dir2";
-@import "subdir/in-subdir.scss";
+@use "../_top.scss" as top;
+@use "meteor:{local-test:illusionfield:scss}/test/scss/top2" as top2;
+@use "_in-dir" as *;
+@use "./in-dir2" as *;
+@use "subdir/in-subdir.scss" as *;
 
-
-.scss-el1 { border-style: $scss-el1-style; }
-.scss-el2 { border-style: $scss-el2-style; }
+.scss-el1 { border-style: top.$scss-el1-style; }
+.scss-el2 { border-style: top2.$scss-el2-style; }
 .scss-el3 { border-style: $scss-el3-style; }
 .scss-el4 { border-style: $scss-el4-style; }
 .scss-el5 { border-style: $scss-el5-style; }
-.scss-el6 { border-style: $scss-el6-style; }
+.scss-el6 { border-style: top.$scss-el6-style; }
