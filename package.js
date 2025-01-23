@@ -1,6 +1,6 @@
 Package.describe({
   name: 'illusionfield:scss',
-  version: '0.6.2',
+  version: '0.6.3',
   summary: 'Dart Sass for Meteor.js',
   git: 'https://github.com/illusionfield/meteor-scss.git',
   documentation: 'README.md'
@@ -14,7 +14,8 @@ Package.registerBuildPlugin({
   ],
   npmDependencies: {
     '@babel/runtime': '7.26.0',
-    'sass-embedded': '1.83.4',
+    //'sass-embedded': '1.83.4'
+    'sass': '1.83.4'
   },
   sources: [
     'plugin/compile-scss.js',

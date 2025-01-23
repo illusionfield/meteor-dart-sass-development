@@ -1,6 +1,7 @@
 import { MultiFileCachingCompiler } from 'meteor/caching-compiler';
 
-import sass from 'sass-embedded';
+//import sass from 'sass-embedded';
+import sass from 'sass';
 
 import { pathToFileURL } from 'url';
 const { fs, path } = Plugin;

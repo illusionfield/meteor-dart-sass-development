@@ -1,6 +1,6 @@
 # Dart Sass for Meteor.js
 
-This is a build plugin for Meteor.js that compiles Sass files using Dart Sass Embedded.
+This is a build plugin for Meteor.js that compiles Sass files using Dart Sass.
 
 ## Installation
 
@@ -23,11 +23,11 @@ Package.onUse(function (api) {
 ## Compatibility
 
 - This plugin is tested with Meteor 3.0 and later versions.
-- It uses the [Dart Sass Embedded](https://www.npmjs.com/package/sass-embedded) npm package, meaning it only works on systems supported by Dart Sass: Windows, Mac OS, and Linux.
+- It uses the [Dart Sass](https://www.npmjs.com/package/sass) npm package, meaning it only works on systems supported by Dart Sass: Windows, Mac OS, and Linux.
 
 ## Usage
 
-After installation, this package automatically finds all `.scss` and `.sass` files in your project, compiles them with [Dart Sass Embedded](https://www.npmjs.com/package/sass-embedded), and includes the resulting CSS in the application's client bundle. These files can be located anywhere in your project.
+After installation, this package automatically finds all `.scss` and `.sass` files in your project, compiles them with [Dart Sass](https://www.npmjs.com/package/sass), and includes the resulting CSS in the application's client bundle. These files can be located anywhere in your project.
 
 ### File Types
 
