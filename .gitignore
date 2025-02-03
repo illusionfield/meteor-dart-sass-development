@@ -68,4 +68,5 @@ bundle.tar.gz
 /.bundle-*
 
 meteor/
-#.npm
+.npm
+.versions

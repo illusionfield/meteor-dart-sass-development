@@ -22,7 +22,8 @@ Package.onUse(function (api) {
 
 ## Compatibility
 
-- This plugin is tested with Meteor 3.0 and later versions.
+- This plugin has been verified to work with Meteor 2.8 and later.
+- It offers full compatibility with Meteor 3.
 - It uses the [Dart Sass](https://www.npmjs.com/package/sass) npm package, meaning it only works on systems supported by Dart Sass: Windows, Mac OS, and Linux.
 
 ## Usage
@@ -46,33 +47,89 @@ Each compiled source file generates a separate CSS file, which is then merged in
 
 You can import styles from various locations, including other packages, your own app, and npm modules.
 
-- **Importing from another package**:
+#### Importing from another package:
 
 ```scss
-@import "meteor:{my-package:pretty-buttons}/buttons/_styles.scss";
+@use "meteor:{my-package:pretty-buttons}/buttons/styles" as buttons; // Assigns a namespace "buttons"
 
 .my-button {
-  @extend .pretty-button; // Use styles imported from the package
+  @extend buttons.pretty-button; // Uses the imported class with its namespace
 }
 ```
 
-- **Importing from your app**:
+or
 
 ```scss
-@import "{}/client/styles/imports/colors.scss";
+@use "meteor:{my-package:pretty-buttons}/buttons/styles" as *; // Imports everything into the global scope
+
+.my-button {
+  @extend .pretty-button; // No namespace required
+}
+```
+
+#### Importing from your app:
+
+```scss
+@use "{}/client/styles/imports/colors" as colors; // Assigns a namespace "colors"
 
 .my-nav {
-  background-color: @primary-branding-color; // Use a color from the app's style palette
+  background-color: colors.$primary-branding-color; // Uses a variable from the imported file
 }
 ```
 
-- **Importing from npm modules**:
+or
 
 ```scss
-@import "~module-name/stylesheet";
+@use "{}/client/styles/imports/colors" as *; // Imports everything into the global scope
+
+.my-nav {
+  background-color: $primary-branding-color; // Directly uses the variable without namespace
+}
+```
+
+#### Importing from npm modules:
+
+```scss
+@use "~module-name/stylesheet"; // Imports a module from node_modules
 ```
 
 If the target is a directory, it will search for an `index.scss`, `_index.scss`, `index.sass`, or `_index.sass` file inside that directory.
+
+#### Using `@forward`
+
+`@forward` is used to create a **shared module** that collects multiple imports and makes them available for other files.
+
+**Example:**
+
+```scss
+// _index.scss (This file serves as a hub for styles)
+@forward "colors";
+@forward "typography";
+@forward "buttons";
+```
+
+Then in your main file:
+
+```scss
+@use "{}/client/styles/index" as styles;
+
+.my-nav {
+  background-color: styles.$primary-branding-color;
+}
+```
+
+This method helps organize styles into modular components.
+
+#### Comparison: `@import` vs. `@use`
+
+For more details, see the [Sass Documentation](https://sass-lang.com/documentation/at-rules/import).
+
+| Legacy `@import`                      | Modern `@use`                    |
+| ------------------------------------- | -------------------------------- |
+| `@import "file";`                     | `@use "file";`                   |
+| `@import "file";` (global namespace)  | `@use "file" as *;`              |
+| `@import "file";` (to forward styles) | `@forward "file";`               |
+| `@import "~module-name/stylesheet";`  | `@use "module-name/stylesheet";` |
 
 ### Global Include Path
 
