@@ -1,7 +1,5 @@
 import { MultiFileCachingCompiler } from 'meteor/caching-compiler';
 
-import sass from 'sass';
-
 import { pathToFileURL } from 'url';
 const { fs, path } = Plugin;
 
@@ -20,6 +18,40 @@ if('object' === typeof userOptions) {
   }
   delete userOptions.includePaths;
 }
+
+function getSass() {
+  const err = new Error([
+    '',
+    `The sass npm package could not be found in your node_modules`,
+    'directory. Please run the following command to install it:',
+    '',
+    '    meteor npm install --save-dev sass',
+    'or',
+    '    meteor npm install --save-dev sass-embedded',
+    '',
+  ].join('\n'));
+
+  let sass;
+  let isErr = false;
+
+  try {
+    sass = require('sass');
+  } catch(e) {
+    isErr = true;
+  }
+  try {
+    isErr = false;
+    sass = require('sass-embedded');
+  } catch(e) {
+    isErr = true;
+  }
+  if(isErr) {
+    return [err, null];
+  }
+  return [null, sass];
+}
+
+const [missingSassError, sass] = getSass();
 
 Plugin.registerCompiler({
   extensions: ['scss', 'sass'],
@@ -200,6 +232,9 @@ class SassCompiler extends MultiFileCachingCompiler {
     // Compile
     let output;
     try {
+      if(missingSassError) {
+        throw missingSassError;
+      }
       let isTest = !!global.testCommandMetadata;
       // If the input file is a package file, it is not a root.
       //if(inputFile.isPackageFile()) {

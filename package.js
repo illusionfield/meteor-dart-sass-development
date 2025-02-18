@@ -13,9 +13,6 @@ Package.registerBuildPlugin({
     'ecmascript@0.16.2 || 0.16.10',
   ],
   sources: ['plugin/compile-scss.js'],
-  npmDependencies: {
-    'sass': '1.85.0'
-  }
 });
 
 Package.onUse(api => {
