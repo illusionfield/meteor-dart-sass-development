@@ -1,0 +1,7 @@
+{
+  "quietDeps": true,
+  "verbose": false,
+  "includePaths": [
+    "meteor:{local-test:illusionfield:scss}/test/include-paths/modules/module"
+  ]
+}

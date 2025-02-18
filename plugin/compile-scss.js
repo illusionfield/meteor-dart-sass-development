@@ -13,6 +13,14 @@ const userOptions = _getConfig(
   'scss-config.json', // legacy
 );
 
+let includePaths = [];
+if('object' === typeof userOptions) {
+  if(Array.isArray(userOptions.includePaths)) {
+    includePaths = userOptions.includePaths;
+  }
+  delete userOptions.includePaths;
+}
+
 Plugin.registerCompiler({
   extensions: ['scss', 'sass'],
   archMatching: 'web'
@@ -37,13 +45,14 @@ class SassCompiler extends MultiFileCachingCompiler {
   // The heuristic is that a file is an import (ie, is not itself processed as a root) if it matches _*.sass, _*.scss
   // This can be overridden in either direction via an explicit `isImport` file option in api.addFiles.
   isRoot(inputFile) {
+    // If the file is explicitly marked as an import, then it is not a root.
     const fileOptions = inputFile.getFileOptions();
     if(fileOptions.hasOwnProperty('isImport')) {
       return !fileOptions.isImport;
     }
+    // If the file is a partial (leading underscore), it is not a root.
     const pathInPackage = inputFile.getPathInPackage();
     const isPartial = hasUnderscore(pathInPackage);
-
     return !isPartial;
   }
 
@@ -144,6 +153,17 @@ class SassCompiler extends MultiFileCachingCompiler {
       if(importPath) {
         return pathToFileURL(importPath);
       }
+
+      // Try include paths if not found
+      for(const includePath of includePaths) {
+        const basename = decodeURIComponent(url);
+        const extendedUrl = new URL(path.join(includePath, basename));
+        const importPath = getRealImportPath(extendedUrl);
+        if(importPath) {
+          return pathToFileURL(importPath);
+        }
+      }
+
       return null;
     }
 
@@ -180,7 +200,19 @@ class SassCompiler extends MultiFileCachingCompiler {
     // Compile
     let output;
     try {
-      output = await sass.compileAsync(inputFile.getPathInPackage(), options);
+      let isTest = !!global.testCommandMetadata;
+      // If the input file is a package file, it is not a root.
+      //if(inputFile.isPackageFile()) {
+      //  isTest = !global.testCommandMetadata;
+      //  return false;
+      //}
+
+      let filePath = inputFile.getPathInPackage();
+      if(inputFile.getPackageName()) {
+        filePath = `${inputFile.getSourceRoot()}/${filePath}`;
+      }
+
+      output = await sass.compileAsync(filePath, options);
     } catch(e) {
       inputFile.error({
         message: `Scss compiler ${e}\n`,
@@ -266,7 +298,6 @@ function _getConfig(...configFileNames) {
     if(fileExists(configPath)) {
       try {
         return JSON.parse(fs.readFileSync(configPath, {encoding: 'utf8'}));
-        break;
       } catch(e) {
         console.warn(`[ SASS Compiler ] Custom config ignored (${configFileName}):\n - ${e}`);
         if(debugMode) {

@@ -35,7 +35,7 @@ Tinytest.add('sass/scss - imports', function(test) {
   }
 });
 
-/*
+
 // Test for includePath
 // (not implemented)
 Tinytest.add('sass/scss - import from includePaths', function(test) {
@@ -49,4 +49,3 @@ Tinytest.add('sass/scss - import from includePaths', function(test) {
     document.body.removeChild(div);
   }
 });
-*/
