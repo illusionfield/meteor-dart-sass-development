@@ -77,12 +77,10 @@ class SassCompiler extends MultiFileCachingCompiler {
   // The heuristic is that a file is an import (ie, is not itself processed as a root) if it matches _*.sass, _*.scss
   // This can be overridden in either direction via an explicit `isImport` file option in api.addFiles.
   isRoot(inputFile) {
-    // If the file is explicitly marked as an import, then it is not a root.
     const fileOptions = inputFile.getFileOptions();
     if(fileOptions.hasOwnProperty('isImport')) {
       return !fileOptions.isImport;
     }
-    // If the file is a partial (leading underscore), it is not a root.
     const pathInPackage = inputFile.getPathInPackage();
     const isPartial = hasUnderscore(pathInPackage);
     return !isPartial;
@@ -105,7 +103,8 @@ class SassCompiler extends MultiFileCachingCompiler {
     const allFilesByPath = new Map();
     for(const [absoluteImportPath, file] of allFiles.entries()) {
       const absolutePath = path.join(file.getSourceRoot(), file.getPathInPackage());
-      allFilesByPath.set(absolutePath, absoluteImportPath);
+      const convertedAbsolutePath = Plugin.convertToOSPath(absolutePath);
+      allFilesByPath.set(convertedAbsolutePath, absoluteImportPath);
     }
 
     const getRealImportPath = (url) => {
@@ -183,7 +182,8 @@ class SassCompiler extends MultiFileCachingCompiler {
 
       const importPath = getRealImportPath(url);
       if(importPath) {
-        return pathToFileURL(importPath);
+        const convertedImportPath = Plugin.convertToOSPath(importPath);
+        return pathToFileURL(convertedImportPath);
       }
 
       // Try include paths if not found
@@ -192,7 +192,8 @@ class SassCompiler extends MultiFileCachingCompiler {
         const extendedUrl = new URL(path.join(includePath, basename));
         const importPath = getRealImportPath(extendedUrl);
         if(importPath) {
-          return pathToFileURL(importPath);
+          const convertedImportPath = Plugin.convertToOSPath(importPath);
+          return pathToFileURL(convertedImportPath);
         }
       }
 
@@ -246,8 +247,8 @@ class SassCompiler extends MultiFileCachingCompiler {
       if(inputFile.getPackageName()) {
         filePath = `${inputFile.getSourceRoot()}/${filePath}`;
       }
-
-      output = await sass.compileAsync(filePath, options);
+      const convertedFilePath = Plugin.convertToOSPath(filePath);
+      output = await sass.compileAsync(convertedFilePath, options);
     } catch(e) {
       inputFile.error({
         message: `Scss compiler ${e}\n`,
@@ -264,7 +265,9 @@ class SassCompiler extends MultiFileCachingCompiler {
     if(output?.loadedUrls && output.loadedUrls.length > 0) {
       const skippedImportPaths = [];
       for(const loadedUrl of output.loadedUrls) {
-        const referencedImportPath = allFilesByPath.get(loadedUrl.pathname);
+        const filePath = decodeURIComponent(convertToStandardPath(loadedUrl.pathname));
+        const convertedFilePath = Plugin.convertToOSPath(filePath);
+        const referencedImportPath = allFilesByPath.get(convertedFilePath);
         if(referencedImportPath) {
           referencedImportPaths.push(referencedImportPath);
         } else {
@@ -291,14 +294,15 @@ class SassCompiler extends MultiFileCachingCompiler {
         }
         switch(url?.protocol) {
           case 'file:':
-            let srcPath = url.pathname.replace(new RegExp(`^${sourceRoot}/?`), '');
-
-            // this is an attempt at standard-minifier-css compatibility
-            //srcPath = (`app/${srcPath}`).replace('app//', 'app/');
-            //srcPath = path.normalize(`${entryFileDisplayPath.replace(/\//g,'-')}/${srcPath}`);
-            srcPath = path.normalize(`${entryFileDisplayPath}/${srcPath}`);
-
-            return srcPath;
+            const filePath = convertToStandardPath(url.pathname);
+            let srcPath = filePath.replace(new RegExp(`^${sourceRoot}/?`), '');
+            srcPath = convertToStandardPath(srcPath);
+            const fullPath = `${entryFileDisplayPath}/${srcPath}`
+            try {
+              return path.normalize(fullPath);
+            } catch(e) {
+              return fullPath;
+            }
           default:
             return src;
         }
@@ -359,4 +363,11 @@ function fileExists(file) {
   } else if(fs.existsSync) {
     return fs.existsSync(file);
   }
+}
+
+function convertToStandardPath(osPath) {
+  if(process.platform === "win32") {
+    return osPath.split(':').join('');
+  }
+  return osPath;
 }
