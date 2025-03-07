@@ -1,0 +1,14 @@
+.github
+.gitignore
+.npm
+.DS_Store
+.eslintcache
+.eslintrc
+CHANGELOG.md
+CONTRIBUTING.md
+HISTORY.md
+LICENSE
+README.md
+package-lock.json
+package.json
+/test/

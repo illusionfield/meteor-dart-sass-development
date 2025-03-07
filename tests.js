@@ -1,12 +1,32 @@
 import { Tinytest } from 'meteor/tinytest';
 
+/*
+Tinytest.add('Safe CallSite check - prevent Tinytest error', function (test) {
+  try {
+    test.expect_fail();
+    test.equal(1,2, 'V8 stack API is available');
+  } catch(err) {
+    global.savedCaptureStackTrace = global.Error.captureStackTrace;
+    global.Error.captureStackTrace = e => {
+      if('string' === typeof e.stack) {
+        e.stack = [];
+      }
+      global.Error.prepareStackTrace(e);
+    }
+    test.fail('V8 stack API is not available');
+  }
+});
+*/
+
 Tinytest.add('sass/scss - imports', function(test) {
   const div = document.createElement('div');
   document.body.appendChild(div);
 
-  const prefixes = ['scss'];
+  const prefixes = [ 'scss' ];
 
   try {
+    const testPropertyName = 'border-top-style';
+
     const t = (className, style) => {
       for(let prefix of prefixes){
         div.className = `${prefix}-${className}`;
@@ -15,7 +35,8 @@ Tinytest.add('sass/scss - imports', function(test) {
         // by the stylesheet) because only the individual styles are computed
         // and can be retrieved. Trying to read the synthetic 'border-style'
         // gives an empty string.
-        test.equal(getStyleProperty(div, 'border-top-style'), style,  div.className);
+        const actualStyle = window.getComputedStyle(div, null).getPropertyValue(testPropertyName);
+        test.equal(actualStyle, style,  div.className);
       }
     };
 
@@ -37,14 +58,14 @@ Tinytest.add('sass/scss - imports', function(test) {
 
 
 // Test for includePath
-// (not implemented)
 Tinytest.add('sass/scss - import from includePaths', function(test) {
   const div = document.createElement('div');
   document.body.appendChild(div);
 
   try {
     div.className = 'from-include-paths';
-    test.equal(getStyleProperty(div, 'border-bottom-style'), 'outset',  div.className);
+    const actualStyle = window.getComputedStyle(div, null).getPropertyValue('border-bottom-style');
+    test.equal(actualStyle, 'outset',  div.className);
   } finally {
     document.body.removeChild(div);
   }
