@@ -31,6 +31,7 @@ jobs:
 
       # we use mtest to run tinytest headless
       - run: npm install -g mtest
+      - run: npm install -g --save-dev sass@1.79.6
 
       - name: Setup meteor
         uses: meteorengineer/setup-meteor@v2
