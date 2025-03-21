@@ -1,6 +1,6 @@
 Package.describe({
   name:    'illusionfield:scss',
-  version: '0.13.0',
+  version: '1.0.0',
   summary: 'Dart Sass for Meteor.js',
   git:     'https://github.com/illusionfield/meteor-dart-sass-development.git',
   documentation: 'README.md'

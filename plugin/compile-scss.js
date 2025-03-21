@@ -19,35 +19,73 @@ if('object' === typeof userOptions) {
   delete userOptions.includePaths;
 }
 
+
+
 function getSass() {
-  const err = new Error([
-    '',
-    `The sass npm package could not be found in your node_modules`,
-    'directory. Please run the following command to install it:',
-    '',
-    '    meteor npm install --save-dev sass',
-    'or',
-    '    meteor npm install --save-dev sass-embedded',
-    '',
-  ].join('\n'));
+  const currentNode = process.version.slice(1);
 
   let sass;
+  let sassType;
   let isErr = false;
+  let requiredNode;
 
   try {
+    requiredNode = (require('sass/package.json').engines || {}).node;
+    sassType = 'sass';
     sass = require('sass');
   } catch(e) {
-    isErr = true;
-  }
-  try {
-    isErr = false;
-    sass = require('sass-embedded');
-  } catch(e) {
+    if(debugMode) {
+      console.error(`${e}`);
+    }
     isErr = true;
   }
   if(isErr) {
+    try {
+      isErr = false;
+      requiredNode = (require('sass-embedded/package.json').engines || {}).node;
+      sassType = 'sass-embedded';
+      sass = require('sass-embedded');
+    } catch(e) {
+      if(debugMode) {
+        console.error(`${e}`);
+      }
+      isErr = true;
+    }
+  }
+
+  if(requiredNode && !satisfies(requiredNode, currentNode)) {
+    const err = new Error([
+      '','',
+      `🚨 [SASS Compiler] Unsupported Node.js version!`,
+      `   Required: ${requiredNode}`,
+      `   Current:  ${currentNode}`,
+      `   Compiler: ${sassType}`,
+      `Please switch to a compatible Compiler version.`,
+      '',
+    ].join('\n'));
+
     return [err, null];
   }
+
+  if(isErr) {
+    const err = new Error([
+      '',
+      `The sass npm package could not be found in your node_modules`,
+      'directory. Please run the following command to install it:',
+      '',
+      '    meteor npm install --save-dev sass',
+      'or',
+      '    meteor npm install --save-dev sass-embedded',
+      '',
+    ].join('\n'));
+
+    return [err, null];
+  }
+
+  if(debugMode) {
+    console.log(`[SASS Compiler] ${sassType} selected - Node.js version ${currentNode} satisfies the required version constraint (${requiredNode}).`);
+  }
+
   return [null, sass];
 }
 
@@ -370,4 +408,36 @@ function convertToStandardPath(osPath) {
     return osPath.split(':').join('');
   }
   return osPath;
+}
+
+function satisfies(minVersion, currentVersion) {
+  if(minVersion.startsWith('>=')) {
+    return versionCompare(currentVersion, minVersion.slice(2)) >= 0;
+  } else if(minVersion.startsWith('>')) {
+    return versionCompare(currentVersion, minVersion.slice(1)) > 0;
+  } else if(minVersion.startsWith('<=')) {
+    return versionCompare(currentVersion, minVersion.slice(2)) <= 0;
+  } else if(minVersion.startsWith('<')) {
+    return versionCompare(currentVersion, minVersion.slice(1)) < 0;
+  } else if(minVersion.startsWith('=')) {
+    return versionCompare(currentVersion, minVersion.slice(1)) === 0;
+  } else {
+    // implicit "="
+    return versionCompare(currentVersion, minVersion) === 0;
+  }
+}
+
+function versionCompare(v1, v2) {
+  const toNum = v => v.split('.').map(Number);
+  const [a1, a2] = [toNum(v1), toNum(v2)];
+  const len = Math.max(a1.length, a2.length);
+
+  for(let i = 0; i < len; i++) {
+    const num1 = a1[i] ?? 0;
+    const num2 = a2[i] ?? 0;
+
+    if(num1 > num2) return 1;
+    if(num1 < num2) return -1;
+  }
+  return 0;
 }
