@@ -19,8 +19,6 @@ if('object' === typeof userOptions) {
   delete userOptions.includePaths;
 }
 
-
-
 function getSass() {
   const currentNode = process.version.slice(1);
 
@@ -30,9 +28,10 @@ function getSass() {
   let requiredNode;
 
   try {
-    requiredNode = (require('sass/package.json').engines || {}).node;
-    sassType = 'sass';
-    sass = require('sass');
+    const _sassType = 'sass';
+    requiredNode = (require(`${_sassType}/package.json`).engines || {}).node;
+    sassType = _sassType;
+    sass = require(_sassType);
   } catch(e) {
     if(debugMode) {
       console.error(`${e}`);
@@ -42,9 +41,10 @@ function getSass() {
   if(isErr) {
     try {
       isErr = false;
-      requiredNode = (require('sass-embedded/package.json').engines || {}).node;
-      sassType = 'sass-embedded';
-      sass = require('sass-embedded');
+      const _sassType = 'sass-embedded';
+      requiredNode = (require(`${_sassType}/package.json`).engines || {}).node;
+      sassType = _sassType;
+      sass = require(_sassType);
     } catch(e) {
       if(debugMode) {
         console.error(`${e}`);
