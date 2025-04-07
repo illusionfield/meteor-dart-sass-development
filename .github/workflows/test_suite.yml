@@ -3,10 +3,10 @@ name: Test suite
 # run ci on direct pushes to main
 # or on any pull request update
 on:
-  #push:
-  #  branches:
-  #    - main
-  #pull_request:
+  push:
+    branches:
+      - main
+  pull_request:
 
 jobs:
   tests:

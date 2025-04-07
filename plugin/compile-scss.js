@@ -19,6 +19,26 @@ if('object' === typeof userOptions) {
   delete userOptions.includePaths;
 }
 
+/**
+ * Determines the appropriate require function based on the current execution context.
+ *
+ * In test environments (when global.testCommandMetadata is truthy),
+ * a custom require function produced by requireFromCwdFactory() is used. This ensures that
+ * dependencies—such as the Sass compiler—are loaded from the project's node_modules directory
+ * rather than from the package/plugin directory. This is necessary because during testing,
+ * the package might not bundle its own dependencies, and using the project's node_modules
+ * avoids module resolution issues.
+ *
+ * In non-test environments, the standard Node.js require function is used.
+ */
+let requireFn;
+const isTest = !!global.testCommandMetadata;
+if(isTest) {
+  requireFn = requireFromCwdFactory();
+} else {
+  requireFn = require;
+}
+
 function getSass() {
   const currentNode = process.version.slice(1);
 
@@ -29,9 +49,9 @@ function getSass() {
 
   try {
     const _sassType = 'sass';
-    requiredNode = (require(`${_sassType}/package.json`).engines || {}).node;
+    requiredNode = getNodeEngineRequirement(_sassType);
     sassType = _sassType;
-    sass = require(_sassType);
+    sass = requireFn(_sassType);
   } catch(e) {
     if(debugMode) {
       console.error(`${e}`);
@@ -42,9 +62,9 @@ function getSass() {
     try {
       isErr = false;
       const _sassType = 'sass-embedded';
-      requiredNode = (require(`${_sassType}/package.json`).engines || {}).node;
+      requiredNode = getNodeEngineRequirement(_sassType);
       sassType = _sassType;
-      sass = require(_sassType);
+      sass = requireFn(_sassType);
     } catch(e) {
       if(debugMode) {
         console.error(`${e}`);
@@ -401,6 +421,20 @@ function fileExists(file) {
   } else if(fs.existsSync) {
     return fs.existsSync(file);
   }
+}
+
+function requireFromCwdFactory() {
+  const { createRequire } = require('module');
+  return createRequire(path.join(process.cwd(), 'noop.js'));
+}
+
+function getNodeEngineRequirement(pkgName) {
+  const pkgPath = path.join(process.cwd(), 'node_modules', pkgName, 'package.json');
+  if(!fileExists(pkgPath)) {
+    throw new Error(`Package ${pkgName} not found in node_modules`);
+  }
+  const pkgJson = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+  return pkgJson.engines?.node || null;
 }
 
 function convertToStandardPath(osPath) {
