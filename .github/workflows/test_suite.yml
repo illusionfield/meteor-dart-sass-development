@@ -1,42 +1,40 @@
 name: Test suite
 
-# run ci on direct pushes to main
-# or on any pull request update
 on:
   push:
     branches:
-      - main
+      - master
+      - feature/*
   pull_request:
 
 jobs:
   tests:
     name: Meteor package tests
     runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        include:
+          - meteor-version: 2.10
+            node-version: 14
+          - meteor-version: 3.1.2
+            node-version: 22
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: setup node
+      - name: Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: ${{ matrix.node-version }}
 
-      - name: cache dependencies
-        uses: actions/cache@v3
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-22-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-22-
-
-      # we use mtest to run tinytest headless
-      - run: npm install -g mtest
-
-      - name: Setup meteor
+      - name: Setup Meteor ${{ matrix.meteor-version }}
         uses: meteorengineer/setup-meteor@v2
         with:
-          meteor-release: '3.1.2'
+          meteor-release: ${{ matrix.meteor-version }}
 
-      - run: |
+      - name: Install and test
+        run: |
           meteor npm install
           meteor npm run test:once
