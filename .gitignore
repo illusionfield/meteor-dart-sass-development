@@ -69,4 +69,6 @@ bundle.tar.gz
 
 meteor/
 .npm
-.versions
+.meteor
+package-lock.json
+
